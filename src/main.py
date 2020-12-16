@@ -1,7 +1,11 @@
 import os
 import telebot
 
-bot_proxy = telebot.TeleBot(os.environ['BOT_AUTH_TOKEN'])
+from security import GoogleCloudSecurityProxy
+
+sec_manager_proxy = GoogleCloudSecurityProxy()
+
+bot_proxy = telebot.TeleBot(sec_manager_proxy.get_bot_auth_token())
 
 @bot_proxy.message_handler(commands=['start'])
 def initiate_session(message):
