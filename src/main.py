@@ -1,6 +1,7 @@
+import os
 import telebot
 
-bot_proxy = telebot.TeleBot('')
+bot_proxy = telebot.TeleBot(os.environ['BOT_AUTH_TOKEN'])
 
 @bot_proxy.message_handler(commands=['start'])
 def initiate_session(message):
