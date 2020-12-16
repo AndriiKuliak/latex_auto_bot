@@ -1,24 +1,52 @@
-import telebot
+import os
 import logging
+
+import flask
+import telebot
 
 from security import GoogleCloudSecurityProxy
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s - %(message)s')
+BOT_API_TOKEN = GoogleCloudSecurityProxy().get_bot_auth_token()
 
-sec_manager_proxy = GoogleCloudSecurityProxy()
+WEBHOOK_HOST = 'latex-telegram-bot-idss7f3isa-ey.a.run.app'
+WEBHOOK_PORT = int(os.environ.get('PORT'))
+WEBHOOK_LISTEN = '0.0.0.0'
 
-bot_proxy = telebot.TeleBot(sec_manager_proxy.get_bot_auth_token())
+WEBHOOK_URL_BASE = "https://%s" % (WEBHOOK_HOST)
+WEBHOOK_URL_PATH = "/%s/" % (BOT_API_TOKEN)
 
-@bot_proxy.message_handler(commands=['start'])
-def initiate_session(message):
-    logging.debug("Handling session initialisation from %s(id: %d)", message.from_user.username, message.from_user.id)
-    bot_proxy.send_message(message.chat.id, 'Hello, fellow!')
+app = flask.Flask(__name__)
+bot = telebot.TeleBot(BOT_API_TOKEN)
 
-@bot_proxy.message_handler(content_types=['text'])
-def handle_user_input(message):
-    logging.debug("Handling user text input from %s(id: %d)", message.from_user.username, message.from_user.id)
-    bot_proxy.send_message(message.chat.id, message.text)
+@app.route('/', methods=['GET', 'HEAD'])
+def index():
+    return 'Hello'
+
+@app.route(WEBHOOK_URL_PATH, methods=['POST'])
+def webhook():
+    if flask.request.headers.get('content-type') == 'application/json':
+        json_string = flask.request.get_data().decode('utf-8')
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return ''
+    else:
+        flask.abort(403)
+
+@bot.message_handler(commands=['help', 'start'])
+def send_welcome(message):
+    bot.reply_to(message,
+                 ("Hello, I am LaTeX Auto Bot.\n"
+                  "For now I can onlu echo yor messages, but I promise to be smarter."))
+
+@bot.message_handler(func=lambda message: True, content_types=['text'])
+def echo_message(message):
+    bot.reply_to(message, message.text)
+
+bot.remove_webhook()
+bot.set_webhook(url=WEBHOOK_URL_BASE + WEBHOOK_URL_PATH)
 
 if __name__ == "__main__":
-    logging.info('Starting nessage polling from Telegram servers')
-    bot_proxy.polling()
+    logging.info('Starting web server on port %s' % WEBHOOK_PORT)
+    app.run(host=WEBHOOK_LISTEN,
+            port=WEBHOOK_PORT,
+            debug=True)

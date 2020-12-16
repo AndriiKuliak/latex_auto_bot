@@ -7,4 +7,4 @@ COPY requirements.txt .
 
 RUN pip install -r requirements.txt
 
-CMD [ "python", "./main.py" ]
+CMD exec gunicorn --bind :$PORT --workers 1 --threads 4 --timeout 0 main:app
