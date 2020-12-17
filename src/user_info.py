@@ -2,9 +2,10 @@ from enum import Enum
 
 class States(Enum):
     START = 0
-    CHECK_SYNTAX = 1
-    PREVIEW_DOCUMENT = 2
-    CONVERT_DOCUMENT = 3
+    MAIN_MENU = 1
+    CHECK_SYNTAX = 2
+    PREVIEW_DOCUMENT = 3
+    CONVERT_DOCUMENT = 4
 
 class UserInfo:
     user_id = None

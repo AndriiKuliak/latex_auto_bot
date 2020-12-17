@@ -112,13 +112,3 @@ class DBProxy:
         finally:
             if (db_connection):
                 db_connection.close()
-
-
-if __name__ == "__main__":
-    proxy = DBProxy()
-
-    print(proxy.get_user_info(user_info.UserInfo(1, 1, 12345)))
-
-    proxy.set_user_info(user_info.UserInfo(1, 3, 12345))
-
-    print(proxy.get_user_info(user_info.UserInfo(1, 1, 0)))
