@@ -1,7 +1,10 @@
-import logging
+import os
 from abc import ABC, abstractmethod
 
 from google.cloud import secretmanager
+
+import config
+from logger import logger
 
 class SecurityManagerProxyBase(ABC):
     @abstractmethod
@@ -10,21 +13,23 @@ class SecurityManagerProxyBase(ABC):
 
 class GoogleCloudSecurityProxy(SecurityManagerProxyBase):
     def __init__(self):
-        logging.debug("GoogleCloudSecurityProxy cretion")
+        logger.debug("GoogleCloudSecurityProxy cretion")
         super().__init__()
         self._sec_mgr_proxy = secretmanager.SecretManagerServiceClient()
 
     def get_bot_auth_token(self):
-        bot_secret_payload = self._get_secret_info(753266209129, "LATEX_AUTO_BOT_AUTH")
+        gproject_id = int(os.environ.get('GCP_PROJECT'))
+
+        bot_secret_payload = self._get_secret_info(gproject_id, config.BOT_API_SECRET_NAME)
 
         return bot_secret_payload.data.decode()
 
     def _get_secret_info(self, project_id, secret_id):
         secret_full_name = "projects/{}/secrets/{}/versions/latest".format(project_id, secret_id)
 
-        logging.info("Requesting secret '{}'".format(secret_full_name))
+        logger.info("Requesting secret '{}'".format(secret_full_name))
         secret_info = self._sec_mgr_proxy.access_secret_version(request={"name": secret_full_name})
-        logging.info("Successfully requested secret")
+        logger.info("Successfully requested secret")
 
         return secret_info.payload
 
