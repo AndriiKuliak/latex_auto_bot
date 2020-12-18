@@ -39,6 +39,77 @@ def check_message_duplicate(user, message):
     return States.START == user or message.date != user.last_message_time
 
 
+def convert_document(user, message):
+    try:
+        logger.info("Generating PDF for user {}".format(user.user_id))
+
+        bot.send_message(message.chat.id, "Let's generate PDF for you ;)")
+
+        if message.content_type == 'document':
+            sender_file_name = message.document.file_name
+            if sender_file_name[sender_file_name.rindex('.') + 1:] != 'tex':
+                bot.send_message(message.chat.id, "Only LaTeX (*.tex) files are accepted")
+                return
+
+            sender_file_name = config.WORKDIR_PATH + sender_file_name
+
+            doc_info = bot.get_file(message.document.file_id)
+            raw_file = bot.download_file(doc_info.file_path)
+
+            with(open(sender_file_name, 'wb')) as sender_file:
+                sender_file.write(raw_file)
+
+            path_to_doc = LatexUtilties().generate_pdf(user.user_id, sender_file_name)
+        else:   
+            path_to_doc = LatexUtilties().generate_pdf_raw(user.user_id, message.text)
+
+        with open(path_to_doc, "rb") as doc:
+            bot.send_document(message.chat.id, doc, caption="Here you go")
+        
+        os.unlink(path_to_doc)
+
+    except Exception as e:
+        logger.exception("An exception occured: {}".format(e))
+        bot.send_message(message.chat.id, "Something went wrong! Please check your document")
+
+
+def preview_document(user, message):
+    try:
+        logger.info("Generating preview for user {}".format(user.user_id))
+
+        bot.send_message(message.chat.id, "Let's render your document ;)")
+
+        if message.content_type == 'document':
+            sender_file_name = message.document.file_name
+            if sender_file_name[sender_file_name.rindex('.') + 1:] != 'tex':
+                bot.send_message(message.chat.id, "Only LaTeX (*.tex) files are accepted")
+                return
+
+            sender_file_name = config.WORKDIR_PATH + sender_file_name
+
+            doc_info = bot.get_file(message.document.file_id)
+            raw_file = bot.download_file(doc_info.file_path)
+
+            with(open(sender_file_name, 'wb')) as sender_file:
+                sender_file.write(raw_file)
+
+            path_to_pictures = LatexUtilties().generate_png(user.user_id, sender_file_name)
+        else:
+            path_to_pictures = LatexUtilties().generate_png_raw(user.user_id, message.text)
+
+        media_group = [ telebot.types.InputMediaPhoto(open(doc, "rb")) for doc in path_to_pictures ]
+
+        bot.send_media_group(message.chat.id, media_group)
+        bot.send_message(message.chat.id, "Here you go")
+
+        for picture in path_to_pictures:
+            os.unlink(picture)
+
+    except Exception as e:
+        logger.exception("An exception occured: {}".format(e))
+        bot.send_message(message.chat.id, "Something went wrong! Please check your document")
+
+
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     user = db_proxy.get_user_info(UserInfo(message.from_user.id, States.START, message.date))
@@ -102,20 +173,18 @@ def help_handler(message):
 
     user.last_message_time = message.date
     db_proxy.set_user_info(user)
-
-    help_text = """This bot allows you to convert your raw LaTeX document to readable formats\n\n
-                The following commands are currently supported:\n
-                /convertlatex - This mode allows you convert LaTeX document to PDF\n
-                /previewlatex - This mode allows you preview your LaTeX document\n\n
-                LaTeX document should be send as message\n\n
-                Enjoy!\n
-                """
+    help_text =  'This bot allows you to convert your raw LaTeX document to readable formats\n\n'
+    help_text += 'The following commands are currently supported:\n'
+    help_text += '/convertlatex - This mode allows you convert LaTeX document to PDF\n'
+    help_text += '/previewlatex - This mode allows you preview your LaTeX document\n\n'
+    help_text += 'LaTeX document should be send as message\n'
+    help_text += 'Enjoy!'
 
     bot.send_message(message.chat.id, help_text)
 
 
-@bot.message_handler(content_types=['text'])
-def regular_text_handler(message):
+@bot.message_handler(content_types=['text', 'document'])
+def user_input_handler(message):
     user = db_proxy.get_user_info(UserInfo(message.from_user.id, States.START, message.date))
 
     if check_message_duplicate(user, message) == False:
@@ -128,40 +197,9 @@ def regular_text_handler(message):
     logger.debug("Current user state: %s" % str(user))
 
     if user.last_state == States.CONVERT_DOCUMENT:
-        try:
-            logger.info("Generating PDF for user {}".format(user.user_id))
-
-            bot.send_message(message.chat.id, "Let's generate PDF for you ;)")
-            path_to_doc = LatexUtilties().generate_pdf(user.user_id, message.text)
-
-            with open(path_to_doc, "rb") as doc:
-                bot.send_document(message.chat.id, doc, caption="Here you go")
-            
-            os.unlink(path_to_doc)
-
-        except Exception as e:
-            logger.exception("An exception occured: {}".format(e))
-            bot.send_message(message.chat.id, "Something went wrong! Please check your document")
-
+        convert_document(user, message)
     elif user.last_state == States.PREVIEW_DOCUMENT:
-        try:
-            logger.info("Generating preview for user {}".format(user.user_id))
-
-            bot.send_message(message.chat.id, "Let's render your document ;)")
-            path_to_pictures = LatexUtilties().generate_png(user.user_id, message.text)
-
-            media_group = [ telebot.types.InputMediaPhoto(open(doc, "rb")) for doc in path_to_pictures ]
-
-            bot.send_media_group(message.chat.id, media_group)
-            bot.send_message(message.chat.id, "Here you go")
-
-            for picture in path_to_pictures:
-                os.unlink(picture)
-
-        except Exception as e:
-            logger.exception("An exception occured: {}".format(e))
-            bot.send_message(message.chat.id, "Something went wrong! Please check your document")
-
+        preview_document(user, message)
     elif user.last_state == States.CHECK_SYNTAX:
         bot.send_message(message.chat.id, "This function hasn't been implemented yet. \nBut, be patient.")
     else:

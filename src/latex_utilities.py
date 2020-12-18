@@ -9,35 +9,39 @@ class LatexUtilties:
     def __init__(self):
         pass
 
-    def generate_pdf(self, user_id, raw_latex):
-        document_name = config.WORKDIR_PATH + 'user_document_{}'.format(user_id)
-        document_name_tex = document_name + '.tex'
-        document_name_pdf = document_name + '.pdf'
+    def _create_latex_file(self, user_id, raw_latex):
+        document_name = '{}user_document_{}.tex'.format(config.WORKDIR_PATH, user_id)
 
-        with(open(document_name_tex, 'w')) as doc:
+        with(open(document_name, 'w')) as doc:
             doc.write(raw_latex)
         
-        gen_command = ['pdflatex', '-interaction', 'nonstopmode', '-output-directory', config.WORKDIR_PATH, document_name_tex]
+        return document_name
+
+    def generate_pdf(self, user_id, document_name):
+        document_name_base = document_name[:document_name.rindex('.')]
+        document_name_pdf = document_name_base + '.pdf'
+
+        gen_command = ['pdflatex', '-interaction', 'nonstopmode', '-output-directory', config.WORKDIR_PATH, document_name]
         process = subprocess.Popen(gen_command)
         process.communicate()
+
+        os.unlink(document_name_base + '.log')
+        os.unlink(document_name_base + '.aux')
+        os.unlink(document_name)
 
         return_code = process.returncode
         if not return_code == 0:
             os.unlink(document_name_pdf)
 
             raise ValueError('Failed to generate PDF!')
-        
-        os.unlink(document_name + '.log')
-        os.unlink(document_name + '.aux')
-        os.unlink(document_name_tex)
 
         return document_name_pdf
 
 
-    def generate_png(self, user_id, raw_latex):
+    def generate_png(self, user_id, document_name):
         png_file_name = 'converted_png_{}.png'.format(user_id)
 
-        pdf_file_name = self.generate_pdf(user_id, raw_latex)
+        pdf_file_name = self.generate_pdf(user_id, document_name)
 
         converted_files = []
 
@@ -54,3 +58,11 @@ class LatexUtilties:
         os.unlink(pdf_file_name)
 
         return converted_files
+
+
+    def generate_pdf_raw(self, user_id, raw_latex):
+        return self.generate_pdf(user_id, self._create_latex_file(user_id, raw_latex))
+
+
+    def generate_png_raw(self, user_id, raw_latex):
+        return self.generate_png(user_id, self._create_latex_file(user_id, raw_latex))
