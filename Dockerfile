@@ -7,7 +7,7 @@ RUN mkdir /data
 COPY src/ .
 COPY requirements.txt .
 
-RUN apt-get update && apt-get install texlive -y
+RUN apt-get update && apt-get install texlive texlive-pictures texlive-latex-extra -y
 RUN pip install -r requirements.txt
 
 CMD exec gunicorn --bind :$PORT --workers 1 --threads 4 --timeout 0 main:app
