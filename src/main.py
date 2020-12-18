@@ -60,22 +60,6 @@ def handle_start(message):
     bot.send_message(message.chat.id, response)
 
 
-@bot.message_handler(commands=['checklatex'])
-def handle_cheklatex(message):
-    user = db_proxy.get_user_info(UserInfo(message.from_user.id, States.START, message.date))
-
-    if check_message_duplicate(user, message) == False:
-        logger.warning("Message duplicate detected from user %d" % message.from_user.id)
-        return
-
-    user.last_state = States.CHECK_SYNTAX
-    user.last_message_time = message.date
-    db_proxy.set_user_info(user)
-
-    bot.send_message(message.chat.id, "This mode allows you to check document on errors")
-    bot.send_message(message.chat.id, "Just send a content of LaTeX document and I will check it for errors")
-
-
 @bot.message_handler(commands=['convertlatex'])
 def handle_convertlatex(message):
     user = db_proxy.get_user_info(UserInfo(message.from_user.id, States.START, message.date))
@@ -119,17 +103,13 @@ def help_handler(message):
     user.last_message_time = message.date
     db_proxy.set_user_info(user)
 
-    help_text = """
-        This bot allows you to convert your raw LaTeX document to readable formats\n\n
-        The following commands are currently supported:\n
-        /checklatex - This mode allows you to check document on errors\n
-        /convertlatex - This mode allows you convert LaTeX document to PDF\n
-        /previewlatex - This mode allows you preview your LaTeX document\n\n
-
-        LaTeX document should be send as message\n\n
-
-        Enjoy!\n
-    """
+    help_text = """This bot allows you to convert your raw LaTeX document to readable formats\n\n
+                The following commands are currently supported:\n
+                /convertlatex - This mode allows you convert LaTeX document to PDF\n
+                /previewlatex - This mode allows you preview your LaTeX document\n\n
+                LaTeX document should be send as message\n\n
+                Enjoy!\n
+                """
 
     bot.send_message(message.chat.id, help_text)
 
