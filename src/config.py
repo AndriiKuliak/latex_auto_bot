@@ -11,3 +11,5 @@ WEBHOOK_LISTEN = '0.0.0.0'
 WEBHOOK_URL_BASE = "https://%s" % (WEBHOOK_HOST)
 
 DATABASE_FILE = 'local_db.sqlite'
+
+WORKDIR_PATH = '/data/'
